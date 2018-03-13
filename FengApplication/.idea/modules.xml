@@ -3,7 +3,9 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/FengApplication.iml" filepath="$PROJECT_DIR$/FengApplication.iml" />
+      <module fileurl="file://$PROJECT_DIR$/camerademo/camerademo.iml" filepath="$PROJECT_DIR$/camerademo/camerademo.iml" />
       <module fileurl="file://$PROJECT_DIR$/gl2.0demo/gl2.0demo.iml" filepath="$PROJECT_DIR$/gl2.0demo/gl2.0demo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/glcamerademo/glcamerademo.iml" filepath="$PROJECT_DIR$/glcamerademo/glcamerademo.iml" />
     </modules>
   </component>
 </project>

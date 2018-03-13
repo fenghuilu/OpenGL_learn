@@ -8,7 +8,9 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/camerademo" />
             <option value="$PROJECT_DIR$/gl2.0demo" />
+            <option value="$PROJECT_DIR$/glcamerademo" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />

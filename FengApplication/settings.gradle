@@ -1,1 +1,1 @@
-include ':gl2.0demo'
+include ':gl2.0demo', ':glcamerademo', ':camerademo'
