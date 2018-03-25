@@ -25,11 +25,11 @@ public class CameraDrawer implements GLSurfaceView.Renderer {
     private SurfaceTexture surfaceTexture;
     private int width, height;
     private int dataWidth, dataHeight;
-    private AFilter mOesFilter;
+    private AFilter aFilter;
     private int cameraId = 1;
 
     public CameraDrawer(Resources res) {
-        mOesFilter = new OesFilter(res);
+        aFilter = new AFilter(res);
     }
 
     public void setDataSize(int dataWidth, int dataHeight) {
@@ -52,7 +52,7 @@ public class CameraDrawer implements GLSurfaceView.Renderer {
         } else {
             Gl2Utils.rotate(matrix, 270);
         }
-//        mOesFilter.setMatrix(matrix);
+        aFilter.setMatrix(matrix);
     }
 
     public SurfaceTexture getSurfaceTexture() {
@@ -68,13 +68,14 @@ public class CameraDrawer implements GLSurfaceView.Renderer {
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         int texture = createTextureID();
         surfaceTexture = new SurfaceTexture(texture);
-        mOesFilter.create();
-        mOesFilter.setTextureId(texture);
+        surfaceTexture.getTransformMatrix(matrix);
+        aFilter.create();
+        aFilter.setTextureId(texture);
     }
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
-//        setViewSize(width,height);
+        setViewSize(width,height);
     }
 
     @Override
@@ -82,7 +83,7 @@ public class CameraDrawer implements GLSurfaceView.Renderer {
         if (surfaceTexture != null) {
             surfaceTexture.updateTexImage();
         }
-        mOesFilter.draw();
+        aFilter.draw();
     }
 
     private int createTextureID() {

@@ -8,6 +8,7 @@
 package com.feng.glcamerademo;
 
 import android.content.res.Resources;
+import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.util.Log;
 import android.util.SparseArray;
@@ -23,7 +24,7 @@ import java.util.Arrays;
 /**
  * Description:
  */
-public abstract class AFilter {
+public class AFilter {
 
     private static final String TAG="Filter";
 
@@ -52,6 +53,10 @@ public abstract class AFilter {
      * 总变换矩阵句柄
      */
     protected int mHMatrix;
+
+    private int mHCoordMatrix;
+    private float[] mCoordMatrix= Arrays.copyOf(OM,16);
+
     /**
      * 默认纹理贴图句柄
      */
@@ -107,31 +112,23 @@ public abstract class AFilter {
     }
 
     public final void create(){
-        onCreate();
+        createProgramByAssetsFile("shader/oes_base_vertex.sh","shader/oes_base_fragment.sh");
     }
 
-    public final void setSize(int width,int height){
-        onSizeChanged(width,height);
-    }
 
     public void draw(){
-        onClear();
-        onUseProgram();
-        onSetExpandData();
+//        onClear();
+//        onUseProgram();
+        GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        GLES20.glUseProgram(mProgram);
+//        onSetExpandData();
         onBindTexture();
         onDraw();
     }
 
     public void setMatrix(float[] matrix){
         this.matrix=matrix;
-    }
-
-    public float[] getMatrix(){
-        return matrix;
-    }
-
-    public final void setTextureType(int type){
-        this.textureType=type;
     }
 
     public final int getTextureType(){
@@ -146,73 +143,13 @@ public abstract class AFilter {
         this.textureId=textureId;
     }
 
-    public void setFlag(int flag){
-        this.mFlag=flag;
-    }
-
-    public int getFlag(){
-        return mFlag;
-    }
-
-    public void setFloat(int type,float ... params){
-        if(mFloats==null){
-            mFloats=new SparseArray<>();
-        }
-        mFloats.put(type,params);
-    }
-    public void setInt(int type,int ... params){
-        if(mInts==null){
-            mInts=new SparseArray<>();
-        }
-        mInts.put(type,params);
-    }
-    public void setBool(int type,boolean ... params){
-        if(mBools==null){
-            mBools=new SparseArray<>();
-        }
-        mBools.put(type,params);
-    }
-
-    public boolean getBool(int type,int index) {
-        if (mBools == null) return false;
-        boolean[] b = mBools.get(type);
-        return !(b == null || b.length <= index) && b[index];
-    }
-
-    public int getInt(int type,int index){
-        if (mInts == null) return 0;
-        int[] b = mInts.get(type);
-        if(b == null || b.length <= index){
-            return 0;
-        }
-        return b[index];
-    }
-
-    public float getFloat(int type,int index){
-        if (mFloats == null) return 0;
-        float[] b = mFloats.get(type);
-        if(b == null || b.length <= index){
-            return 0;
-        }
-        return b[index];
-    }
-
-    public int getOutputTexture(){
-        return -1;
-    }
-
-    /**
-     * 实现此方法，完成程序的创建，可直接调用createProgram来实现
-     */
-    protected abstract void onCreate();
-    protected abstract void onSizeChanged(int width,int height);
-
     protected final void createProgram(String vertex, String fragment){
         mProgram= uCreateGlProgram(vertex,fragment);
         mHPosition= GLES20.glGetAttribLocation(mProgram, "vPosition");
         mHCoord= GLES20.glGetAttribLocation(mProgram,"vCoord");
         mHMatrix= GLES20.glGetUniformLocation(mProgram,"vMatrix");
         mHTexture= GLES20.glGetUniformLocation(mProgram,"vTexture");
+        mHCoordMatrix= GLES20.glGetUniformLocation(mProgram,"vCoordMatrix");
     }
 
     protected final void createProgramByAssetsFile(String vertex, String fragment){
@@ -265,15 +202,24 @@ public abstract class AFilter {
      */
     protected void onSetExpandData(){
         GLES20.glUniformMatrix4fv(mHMatrix,1,false,matrix,0);
+        GLES20.glUniformMatrix4fv(mHCoordMatrix,1,false,mCoordMatrix,0);
     }
 
     /**
      * 绑定默认纹理
      */
-    protected void onBindTexture(){
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0+textureType);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,getTextureId());
-        GLES20.glUniform1i(mHTexture,textureType);
+//    protected void onBindTexture(){
+//        GLES20.glActiveTexture(GLES20.GL_TEXTURE0+textureType);
+//        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,getTextureId());
+//        GLES20.glUniform1i(mHTexture,textureType);
+//    }
+
+    protected void onBindTexture() {
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0+getTextureType());
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,getTextureId());
+        GLES20.glUniform1i(mHTexture,getTextureType());
+        GLES20.glUniformMatrix4fv(mHMatrix,1,false,matrix,0);
+        GLES20.glUniformMatrix4fv(mHCoordMatrix,1,false,mCoordMatrix,0);
     }
 
     public static void glError(int code,Object index){

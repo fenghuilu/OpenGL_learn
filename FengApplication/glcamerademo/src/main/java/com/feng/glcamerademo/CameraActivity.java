@@ -26,30 +26,33 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        PermissionUtils.askPermission(this,new String[]{Manifest.permission.CAMERA, Manifest
-            .permission.WRITE_EXTERNAL_STORAGE},10,initViewRunnable);
+//        setContentView(R.layout.activity_camera);
+//        mCameraView = (CameraView) findViewById(R.id.mCameraView);
+        setContentView(mCameraView = new CameraView(this));
+//        PermissionUtils.askPermission(this,new String[]{Manifest.permission.CAMERA, Manifest
+//            .permission.WRITE_EXTERNAL_STORAGE},10,initViewRunnable);
     }
 
-    private Runnable initViewRunnable=new Runnable() {
-        @Override
-        public void run() {
-            setContentView(R.layout.activity_camera);
-            mCameraView= (CameraView)findViewById(R.id.mCameraView);
-        }
-    };
+//    private Runnable initViewRunnable=new Runnable() {
+//        @Override
+//        public void run() {
+//            setContentView(R.layout.activity_camera);
+//            mCameraView= (CameraView)findViewById(R.id.mCameraView);
+//        }
+//    };
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        PermissionUtils.onRequestPermissionsResult(requestCode == 10, grantResults, initViewRunnable,
-            new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(CameraActivity.this, "没有获得必要的权限", Toast.LENGTH_SHORT).show();
-                    finish();
-                }
-            });
-    }
+//    @Override
+//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+//        PermissionUtils.onRequestPermissionsResult(requestCode == 10, grantResults, initViewRunnable,
+//            new Runnable() {
+//                @Override
+//                public void run() {
+//                    Toast.makeText(CameraActivity.this, "没有获得必要的权限", Toast.LENGTH_SHORT).show();
+//                    finish();
+//                }
+//            });
+//    }
 
     @Override
     protected void onResume() {
@@ -71,8 +74,8 @@ public class CameraActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        String name=item.getTitle().toString();
-        if(name.equals("切换摄像头")){
+        String name = item.getTitle().toString();
+        if (name.equals("切换摄像头")) {
             mCameraView.switchCamera();
         }
         return super.onOptionsItemSelected(item);

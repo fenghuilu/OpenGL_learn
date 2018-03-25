@@ -1,6 +1,7 @@
 package com.feng.gl20demo.camerademo;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.opengl.GLES11Ext;
@@ -31,27 +32,23 @@ public class CameraGLSView extends GLSurfaceView implements GLSurfaceView.Render
         init();
     }
 
-    SurfaceTexture surfaceTexture;
-    int textureID;
-
     private void init() {
         setEGLContextClientVersion(2);
-        mCameraTexture = new CameraTexture(getContext());
         setRenderer(this);
         setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+        mCameraTexture = new CameraTexture(getContext());
         mCamera = new KitkatCamera();
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         mCameraTexture.onSurfaceCreated(gl, config);
-        surfaceTexture = new SurfaceTexture(textureID = createTextureID());
-        mCameraTexture = new CameraTexture(getContext());
-        mCameraTexture.setTextureID(textureID);
-        Log.d("haha", "textureID = " + textureID);
+        Log.d("feng", "onSurfaceCreated");
         mCamera.open(mCameraId);
-        mCamera.setPreviewTexture(surfaceTexture);
-        surfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+        Point point = mCamera.getPreviewSize();
+        mCameraTexture.setDataSize(point.x, point.y);
+        mCamera.setPreviewTexture(mCameraTexture.getSurfaceTexture());
+        mCameraTexture.getSurfaceTexture().setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
                 Log.d("haha", "onFrameAvailable");
@@ -68,7 +65,7 @@ public class CameraGLSView extends GLSurfaceView implements GLSurfaceView.Render
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        surfaceTexture.updateTexImage();
+        Log.d("haha", "onDrawFrame");
         mCameraTexture.onDrawFrame(gl);
     }
 
@@ -78,14 +75,4 @@ public class CameraGLSView extends GLSurfaceView implements GLSurfaceView.Render
         mCamera.close();
     }
 
-    private int createTextureID() {
-        int[] texture = new int[1];
-        GLES20.glGenTextures(1, texture, 0);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
-        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
-        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
-        return texture[0];
-    }
 }

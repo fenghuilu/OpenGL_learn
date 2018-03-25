@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -25,40 +26,6 @@ import javax.microedition.khronos.opengles.GL10;
 public class CameraTexture extends Model {
     static Boolean DEBUG = true;
     static String TAG = CameraTexture.class.getSimpleName();
-    String vertexShaderCode =
-            "attribute vec4 vPosition;" +
-                    "uniform mat4 vMatrix;" +
-                    "varying vec2 vCoordinate;" +
-                    "attribute vec2 aCoordinate;" +
-                    "void main() {" +
-                    "     gl_Position = vMatrix * vPosition;" +
-                    "     vCoordinate = aCoordinate;" +
-                    "     vCoordinate = (vCoordMatrix*vec4(vCoord,0,1)).xy;" +
-                    " }";
-    String fragmentShaderCode =
-            "#extension GL_OES_EGL_image_external : require" +
-                    "precision mediump float;" +
-//                    "uniform sampler2D vTexture;" +
-                    "uniform samplerExternalOES vTexture;" +
-                    "varying vec2 vCoordinate;" +
-                    "uniform vec3 vChangeColor;" +
-
-                    "void modifyColor(vec4 color){" +
-                    "color.r=max(min(color.r,1.0),0.0);" +
-                    "color.g=max(min(color.g,1.0),0.0);" +
-                    "color.b=max(min(color.b,1.0),0.0);" +
-                    "color.a=max(min(color.a,1.0),0.0);" +
-                    "}" +
-
-                    "void main() {" +
-//               "     vec4 nColor=texture2D(vTexture,vCoordinate);"+
-//               "     float c=nColor.r*vChangeColor.r+nColor.g*vChangeColor.g+nColor.b*vChangeColor.b;"+
-//               "     gl_FragColor=vec4(c,c,c,nColor.a);"+
-//               "     vec4 deltaColor=nColor+vec4(vChangeColor,0.0);"+
-//               "     modifyColor(deltaColor);"+
-//               "     gl_FragColor = deltaColor;"+
-                    "     gl_FragColor = texture2D(vTexture,vCoordinate);" +
-                    " }";
 
     float triangleCoords[] = {
             -1.0f, 1.0f,  // 左上角
@@ -77,15 +44,26 @@ public class CameraTexture extends Model {
     int mProgram;
     int mPositionHandle;
     int mCoordinateHandle;
-    int mMatrixHandle;
+    int mHMatrix;
+    int mHCoordMatrix;
     int mTextureHandle;
     int mTextureID;
     int textureType = 0;
     int mColorChangeHandle;
+    private int width, height;
+    private int dataWidth, dataHeight;
+    private int cameraId = 1;
+    /**
+     * 单位矩阵
+     */
+    public static final float[] OM = MatrixUtils.getOriginalMatrix();
+
+    private float[] matrix = Arrays.copyOf(OM, 16);
     /**
      * mMVPMatrix是"Model View Projection Matrix"的缩写
      */
-    private final float[] mMVPMatrix = new float[16];
+//    private final float[] mCoordMatrix = new float[16];
+    private float[] mCoordMatrix = Arrays.copyOf(OM, 16);
     /**
      * 定义投影矩阵变量
      */
@@ -94,7 +72,6 @@ public class CameraTexture extends Model {
      * 定义相机视图矩阵变量
      */
     private final float[] mViewMatrix = new float[16];
-    private Bitmap mBitmap;
     Context mContext;
 
     public CameraTexture(Context context) {
@@ -115,71 +92,99 @@ public class CameraTexture extends Model {
         sCoordBuffer.position(0);
     }
 
-    SurfaceTexture surfaceTexture;
-    int textureID;
-
-    public void setTextureID(int textureID) {
-        this.textureID = textureID;
+    public void setDataSize(int dataWidth, int dataHeight) {
+        this.dataWidth = dataWidth;
+        this.dataHeight = dataHeight;
+        calculateMatrix();
     }
+
+    public void setViewSize(int width, int height) {
+        this.width = width;
+        this.height = height;
+        calculateMatrix();
+    }
+
+    private void calculateMatrix() {
+        Gl2Utils.getShowMatrix(matrix, this.dataWidth, this.dataHeight, this.width, this.height);
+        if (cameraId == 1) {
+            Gl2Utils.flip(matrix, true, false);
+            Gl2Utils.rotate(matrix, 90);
+        } else {
+            Gl2Utils.rotate(matrix, 270);
+        }
+    }
+
+    SurfaceTexture surfaceTexture;
+
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         GLES20.glClearColor(0f, 1.0f, 1.0f, 1.0f);
-        GLES20.glEnable(GLES20.GL_TEXTURE_2D);
-//        mProgram = initProgram(vertexShaderCode, fragmentShaderCode);
-        createProgram("shader/oes_base_vertex.sh", "shader/oes_base_fragment.sh");
+        surfaceTexture = new SurfaceTexture(mTextureID = createTextureID());
+        surfaceTexture.getTransformMatrix(matrix);
+        createProgramByAssetsFile("shader/oes_base_vertex.sh", "shader/oes_base_fragment.sh");
         //获取变换矩阵vMatrix句柄
-        mMatrixHandle = GLES20.glGetUniformLocation(mProgram, "vCoordMatrix");
+        mHMatrix = GLES20.glGetUniformLocation(mProgram, "vMatrix");
         //获取顶点着色器的vPosition句柄
         mPositionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition");
-        mCoordinateHandle = GLES20.glGetAttribLocation(mProgram, "aCoordinate");
+        mCoordinateHandle = GLES20.glGetAttribLocation(mProgram, "vCoord");
         mTextureHandle = GLES20.glGetUniformLocation(mProgram, "vTexture");
-        mColorChangeHandle = GLES20.glGetUniformLocation(mProgram, "vChangeColor");
-//        surfaceTexture = new SurfaceTexture(textureID = createTextureID());
+        mHCoordMatrix = GLES20.glGetUniformLocation(mProgram, "vCoordMatrix");
+//        mColorChangeHandle = GLES20.glGetUniformLocation(mProgram, "vChangeColor");
     }
 
     public SurfaceTexture getSurfaceTexture() {
         return surfaceTexture;
     }
 
-    public void setSurfaceTexture(SurfaceTexture surfaceTexture) {
-        this.surfaceTexture = surfaceTexture;
-        surfaceTexture.getTransformMatrix(mMVPMatrix);
-    }
 
-    public int initProgram(String vertexShaderCode, String fragmentShaderCode) {
-        //加载shader
-        int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode);
-        int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
-        //创建一个空的OpenGLES程序
-        int program = GLES20.glCreateProgram();
-        //将顶点着色器加入程序
-        GLES20.glAttachShader(program, vertexShader);
-        //将片源着色器加入程序
-        GLES20.glAttachShader(program, fragmentShader);
-        //连接到着色器程序
-        GLES20.glLinkProgram(program);
-        return program;
+
+    private int createTextureID() {
+        int[] texture = new int[1];
+        GLES20.glGenTextures(1, texture, 0);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
+        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
+        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+        return texture[0];
     }
 
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
+        setViewSize(width, height);
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
         GLES20.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        if (surfaceTexture != null) {
+            surfaceTexture.updateTexImage();
+        }
         //使用已经初始化好的mProgram
         GLES20.glUseProgram(mProgram);
         onBindTexture();
         onDraw();
     }
 
-    protected void onDraw() {
+    /**
+     * 绑定默认纹理
+     */
+    protected void onBindTexture() {
+        Log.d("haha", "onBindTexture textureID = " + mTextureID);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + textureType);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTextureID);
+        GLES20.glUniform1i(mTextureHandle, textureType);
+
+        GLES20.glUniformMatrix4fv(mHMatrix, 1, false, matrix, 0);
         //指定vMatrix的值
-        GLES20.glUniformMatrix4fv(mMatrixHandle, 1, false, mMVPMatrix, 0);
+        GLES20.glUniformMatrix4fv(mHCoordMatrix, 1, false, mCoordMatrix, 0);
+
+    }
+
+    protected void onDraw() {
         //启用三角形定顶点的句柄
 //        GLES20.glUniform3fv(mColorChangeHandle, 1, new float[]{0.299f, 0.587f, 0.114f}, 0);
         //准备顶点坐标数据
@@ -194,26 +199,6 @@ public class CameraTexture extends Model {
         GLES20.glDisableVertexAttribArray(mCoordinateHandle);
     }
 
-    /**
-     * 绑定默认纹理
-     */
-    protected void onBindTexture() {
-        Log.d("haha", "textureID = " + textureID);
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0 + textureType);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureID);
-        GLES20.glUniform1i(mTextureHandle, textureType);
-    }
-
-    //    private int createTextureID() {
-//        int[] texture = new int[1];
-//        GLES20.glGenTextures(1, texture, 0);
-//        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
-//        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
-//        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-//        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-//        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
-//        return texture[0];
-//    }
     protected final void createProgramByAssetsFile(String vertex, String fragment) {
         createProgram(uRes(mContext.getResources(), vertex), uRes(mContext.getResources(), fragment));
     }
